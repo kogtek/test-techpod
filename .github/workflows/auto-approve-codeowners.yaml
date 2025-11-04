@@ -39,7 +39,7 @@ jobs:
               
               for (const line of lines) {
                 if (line.trim().startsWith('#') || line.trim() === '') continue;
-                
+                console.log(`${line}`);
                 if (line.includes(file.filename) && line.includes(`@${author}`)) {
                   fileOwned = true;
                   console.log(`  ✓ Owned by author in line: ${line}`);
