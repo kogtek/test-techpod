@@ -109,5 +109,6 @@ jobs:
         uses: hmarr/auto-approve-action@v3
         with:
           github-token: ${{ secrets.AUTO_APPROVE_TOKEN }}
-          approve-message: 'Auto-approved as the PR author is the code owner of all changed files.'
+          review-message: 'Auto-approved as the PR author is the code owner of all changed files.'
+
 
