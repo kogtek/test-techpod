@@ -26,31 +26,88 @@ jobs:
             });
             
             const author = context.payload.pull_request.user.login;
+            console.log(`PR Author: ${author}`);
+            console.log(`Changed files: ${files.map(f => f.filename).join(', ')}`);
             
-            // Parse CODEOWNERS and check if author owns all changed files
-            // (simplified logic - you'd need proper CODEOWNERS parsing)
+            // Parse CODEOWNERS into rules (pattern -> owners)
+            const rules = [];
             const lines = codeowners.split('\n');
+            
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed === '' || trimmed.startsWith('#')) continue;
+              
+              const parts = trimmed.split(/\s+/);
+              if (parts.length < 2) continue;
+              
+              const pattern = parts[0];
+              const owners = parts.slice(1).map(o => o.replace('@', ''));
+              
+              rules.push({ pattern, owners });
+            }
+            
+            console.log('\nCodeowners rules:');
+            rules.forEach(r => console.log(`  ${r.pattern} -> ${r.owners.join(', ')}`));
+            
+            // Function to check if a file matches a pattern
+            function matchesPattern(filePath, pattern) {
+              // Add leading slash to filepath if not present
+              const normalizedPath = filePath.startsWith('/') ? filePath : '/' + filePath;
+              
+              // Wildcard matches everything
+              if (pattern === '*') return true;
+              
+              // Exact match
+              if (normalizedPath === pattern) return true;
+              
+              // Directory pattern (ends with /)
+              if (pattern.endsWith('/')) {
+                return normalizedPath.startsWith(pattern);
+              }
+              
+              // File pattern in any directory (starts with /)
+              if (pattern.startsWith('/')) {
+                return normalizedPath.startsWith(pattern);
+              }
+              
+              return false;
+            }
+            
+            // Check each file
             let authorOwnsAll = true;
             
             for (const file of files) {
-              let fileOwned = false;
-              for (const line of lines) {
-                if (line.includes(file.filename) && line.includes(`@${author}`)) {
-                  fileOwned = true;
-                  break;
+              console.log(`\nChecking file: ${file.filename}`);
+              
+              let fileOwner = null;
+              
+              // Check rules in order (later rules override earlier ones, like GitHub)
+              for (const rule of rules) {
+                if (matchesPattern(file.filename, rule.pattern)) {
+                  fileOwner = rule.owners;
+                  console.log(`  Matched pattern: ${rule.pattern} -> ${rule.owners.join(', ')}`);
                 }
               }
-              if (!fileOwned) {
+              
+              if (!fileOwner) {
+                console.log(`  ✗ No owner found`);
                 authorOwnsAll = false;
-                break;
+              } else if (fileOwner.includes(author)) {
+                console.log(`  ✓ Owned by author (@${author})`);
+              } else {
+                console.log(`  ✗ NOT owned by author (owned by: ${fileOwner.join(', ')})`);
+                authorOwnsAll = false;
               }
             }
             
+            console.log(`\nAuthor owns all files: ${authorOwnsAll}`);
+            core.setOutput('should_approve', authorOwnsAll);
             return authorOwnsAll;
             
       - name: Auto-approve PR
-        if: steps.check.outputs.result == 'true'
+        if: steps.check.outputs.should_approve == 'true'
         uses: hmarr/auto-approve-action@v3
         with:
           github-token: ${{ secrets.AUTO_APPROVE_TOKEN }}
-          approve-message: 'Auto-approved as the author is the code owner for all changed files.'
+          approve-message: 'Auto-approved as the PR author is the code owner of all changed files.'
+
