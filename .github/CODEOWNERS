@@ -1,0 +1,55 @@
+# CODEOWNERS for TechPod Monorepo
+# This file defines who can approve changes to specific parts of the repository
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo (fallback)
+* @ristemingov
+
+# =============================================================================
+# SANDBOX - Individual developer spaces
+# =============================================================================
+# Each developer has their own protected sandbox space
+# Replace with actual GitHub usernames
+
+# Example format:
+# /sandbox/john_doe/ @john-doe
+# /sandbox/jane_smith/ @jane-smith
+
+# Add your team members here:
+# /sandbox/name_lastname/ @github-username
+/sandbox/monika_jovanova/ @m0n1que
+/sandbox/riste_mingov/ @ristemingov
+
+
+
+# =============================================================================
+# PROTECTED SECTIONS - Ambassador-owned
+# =============================================================================
+# These sections require approval from domain ambassadors
+
+
+# Docker - Container configurations, Dockerfiles, compose files
+/docker/ @m0n1que
+
+
+# Load Testing - Performance testing scripts and configurations
+/load_testing/ @ristemingov
+
+
+
+# =============================================================================
+# GISTS - Shared implementations (requires any team member approval)
+# =============================================================================
+# Small reusable implementations: Auth/Authz, AWS integrations, utilities
+# Any team member can approve changes here
+
+/gists/ @ristemingov @m0n1que
+
+
+# =============================================================================
+# CRITICAL FILES - Multiple approvers required
+# =============================================================================
+# These files require extra scrutiny
+
+/.github/CODEOWNERS @ristemingov
+/README.md @ristemingov
