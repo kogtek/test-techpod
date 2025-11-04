@@ -29,32 +29,78 @@ jobs:
             console.log(`PR Author: ${author}`);
             console.log(`Changed files: ${files.map(f => f.filename).join(', ')}`);
             
-            // Parse CODEOWNERS and check if author owns all changed files
+            // Parse CODEOWNERS into rules (pattern -> owners)
+            const rules = [];
             const lines = codeowners.split('\n');
+            
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed === '' || trimmed.startsWith('#')) continue;
+              
+              const parts = trimmed.split(/\s+/);
+              if (parts.length < 2) continue;
+              
+              const pattern = parts[0];
+              const owners = parts.slice(1).map(o => o.replace('@', ''));
+              
+              rules.push({ pattern, owners });
+            }
+            
+            console.log('\nCodeowners rules:');
+            rules.forEach(r => console.log(`  ${r.pattern} -> ${r.owners.join(', ')}`));
+            
+            // Function to check if a file matches a pattern
+            function matchesPattern(filePath, pattern) {
+              // Add leading slash to filepath if not present
+              const normalizedPath = filePath.startsWith('/') ? filePath : '/' + filePath;
+              
+              // Wildcard matches everything
+              if (pattern === '*') return true;
+              
+              // Exact match
+              if (normalizedPath === pattern) return true;
+              
+              // Directory pattern (ends with /)
+              if (pattern.endsWith('/')) {
+                return normalizedPath.startsWith(pattern);
+              }
+              
+              // File pattern in any directory (starts with /)
+              if (pattern.startsWith('/')) {
+                return normalizedPath.startsWith(pattern);
+              }
+              
+              return false;
+            }
+            
+            // Check each file
             let authorOwnsAll = true;
             
             for (const file of files) {
-              let fileOwned = false;
-              console.log(`Checking file: ${file.filename}`);
+              console.log(`\nChecking file: ${file.filename}`);
               
-              for (const line of lines) {
-                if (line.trim().startsWith('#') || line.trim() === '') continue;
-                console.log(`${line}`);
-                if (line.includes(file.filename) && line.includes(`@${author}`)) {
-                  fileOwned = true;
-                  console.log(`  ✓ Owned by author in line: ${line}`);
-                  break;
+              let fileOwner = null;
+              
+              // Check rules in order (later rules override earlier ones, like GitHub)
+              for (const rule of rules) {
+                if (matchesPattern(file.filename, rule.pattern)) {
+                  fileOwner = rule.owners;
+                  console.log(`  Matched pattern: ${rule.pattern} -> ${rule.owners.join(', ')}`);
                 }
               }
               
-              if (!fileOwned) {
-                console.log(`  ✗ NOT owned by author`);
+              if (!fileOwner) {
+                console.log(`  ✗ No owner found`);
                 authorOwnsAll = false;
-                break;
+              } else if (fileOwner.includes(author)) {
+                console.log(`  ✓ Owned by author (@${author})`);
+              } else {
+                console.log(`  ✗ NOT owned by author (owned by: ${fileOwner.join(', ')})`);
+                authorOwnsAll = false;
               }
             }
             
-            console.log(`Author owns all files: ${authorOwnsAll}`);
+            console.log(`\nAuthor owns all files: ${authorOwnsAll}`);
             core.setOutput('should_approve', authorOwnsAll);
             return authorOwnsAll;
             
