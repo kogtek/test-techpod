@@ -26,31 +26,42 @@ jobs:
             });
             
             const author = context.payload.pull_request.user.login;
+            console.log(`PR Author: ${author}`);
+            console.log(`Changed files: ${files.map(f => f.filename).join(', ')}`);
             
             // Parse CODEOWNERS and check if author owns all changed files
-            // (simplified logic - you'd need proper CODEOWNERS parsing)
             const lines = codeowners.split('\n');
             let authorOwnsAll = true;
             
             for (const file of files) {
               let fileOwned = false;
+              console.log(`Checking file: ${file.filename}`);
+              
               for (const line of lines) {
+                if (line.trim().startsWith('#') || line.trim() === '') continue;
+                
                 if (line.includes(file.filename) && line.includes(`@${author}`)) {
                   fileOwned = true;
+                  console.log(`  ✓ Owned by author in line: ${line}`);
                   break;
                 }
               }
+              
               if (!fileOwned) {
+                console.log(`  ✗ NOT owned by author`);
                 authorOwnsAll = false;
                 break;
               }
             }
             
+            console.log(`Author owns all files: ${authorOwnsAll}`);
+            core.setOutput('should_approve', authorOwnsAll);
             return authorOwnsAll;
             
       - name: Auto-approve PR
-        if: steps.check.outputs.result == 'true'
+        if: steps.check.outputs.should_approve == 'true'
         uses: hmarr/auto-approve-action@v3
         with:
           github-token: ${{ secrets.AUTO_APPROVE_TOKEN }}
-          approve-message: 'Auto-approved as the author is the code owner for all changed files.'
+          approve-message: 'Auto-approved as the PR author is the code owner of all changed files.'
+
