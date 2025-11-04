@@ -1,0 +1,3 @@
+load testing/load_testing.txt
+
+This is a load testing file.
